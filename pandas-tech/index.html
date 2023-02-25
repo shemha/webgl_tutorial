@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="Author" content="Hirochika Asai" />
+    <!-- https://ja.tech.jar.jp/webgl/basics.html -->
+    <script type="text/javascript">
+      // Multiply two 4x4 matrices
+      function multiplyMatrix4(m1, m2) {
+        let m = new Float32Array(16);
+        if (m1.length != 16 || m2.length != 16) {
+          return null;
+        }
+        for (let i = 0; i < 4; i++) {
+          for (let j = 0; j < 4; j++) {
+            e = 0.0;
+            for (let k = 0; k < 4; k++) {
+              e += m1[i + 4 * k] * m2[k + 4 * j];
+            }
+            m[i + 4 * j] = e;
+          }
+        }
+        return m;
+      }
+
+      // Transpose a 4x4 matrix
+      function transpose4(m) {
+        let n = new Float32Array(16);
+        if (m.length != 16) {
+          return null;
+        }
+        for (let i = 0; i < 4; i++) {
+          for (let j = 0; j < 4; j++) {
+            n[i + 4 * j] = m[4 * i + j];
+          }
+        }
+        return n;
+      }
+
+      // Load shader to the WebGL context
+      function loadShader(gl, type, source) {
+        let shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          console.log(
+            "Failed to compile the shader: " + gl.getShaderInfoLog(shader)
+          );
+          return null;
+        }
+        return shader;
+      }
+
+      // main routine invoked from window.onload
+      function main() {
+        // Get the canvas element
+        const canvas = document.querySelector("#glCanvas");
+
+        // Initialize the GL context
+        const gl = canvas.getContext("webgl");
+
+        // Check if WebGL is available
+        if (null == gl) {
+          alert("Unable to initialize WebGL.");
+          return;
+        }
+
+        // Specify clear color to black (half opaque)
+        gl.clearColor(0.0, 0.0, 0.0, 0.5);
+        // Clear the color buffer of the canvas with clear color specified above
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        // Load the vertex and fragment shaders
+        let ve = document.getElementById("vertex-shader-3d");
+        let fe = document.getElementById("fragment-shader-3d");
+        let vertexShader = loadShader(gl, gl.VERTEX_SHADER, ve.text);
+        let fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fe.text);
+        if (!vertexShader) {
+          alert("Unable to compile the vertex shader.");
+          return;
+        }
+        if (!fragmentShader) {
+          alert("Unable to compile the fragment shader.");
+          return;
+        }
+
+        // Create a program and attach the shaders to the program
+        let program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          console.log(
+            "Failed to link the program: " + gl.getProgramInfoLog(program)
+          );
+          return;
+        }
+
+        // Get the variables defined in the shader program
+        let positionLocation = gl.getAttribLocation(program, "vertexPosition");
+        let transformationLocation = gl.getUniformLocation(
+          program,
+          "modelTransformationMatrix"
+        );
+        let projectionLocation = gl.getUniformLocation(
+          program,
+          "modelProjectionMatrix"
+        );
+
+        // Use the program
+        gl.useProgram(program);
+
+        // Initialize the buffers
+        const positionBuffer = gl.createBuffer();
+        // Cubic's vertices
+        const positions = [
+          // front
+          -0.5, -0.5, -0.5, -0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5,
+          // back
+          0.5, -0.5, -0.5, 0.5, -0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, -0.5,
+          // top
+          -0.5, -0.5, -0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, 0.5, -0.5, -0.5,
+          // bottom
+          -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, -0.5,
+          // right
+          -0.5, -0.5, -0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5,
+          // left
+          -0.5, -0.5, 0.5, -0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, -0.5, 0.5,
+        ];
+        // Bind the buffer to this context
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        // Pass the positions to the context
+        gl.bufferData(
+          gl.ARRAY_BUFFER,
+          new Float32Array(positions),
+          gl.STATIC_DRAW
+        );
+        // Bind the ARRAY_BUFFER buffer data to the attribute pointer
+        gl.enableVertexAttribArray(positionLocation);
+        gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
+
+        // Build the transformation matrix
+        let theta1 = -Math.PI / 6;
+        let theta2 = (-2 * Math.PI) / 6;
+        // カメラとの距離
+        let deltaz = -5.0;
+        // z軸を回転軸として回転変換(theta1の分母を増やすと反時計回りに回転)
+        let matrixRotate1 = transpose4(
+          new Float32Array([
+            // 1行目
+            Math.cos(theta1),
+            -Math.sin(theta1),
+            0.0,
+            0.0,
+            // 2行目
+            Math.sin(theta1),
+            Math.cos(theta1),
+            0.0,
+            0.0,
+            // 3行目
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            // 4行目
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+          ])
+        );
+        // x軸を回転軸として回転変換(前後回転でtheta2の分母を増やすと上周りに回転)
+        let matrixRotate2 = transpose4(
+          new Float32Array([
+            // 1行目
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            // 2行目
+            0.0,
+            Math.cos(theta2),
+            -Math.sin(theta2),
+            0.0,
+            // 3行目
+            0.0,
+            Math.sin(theta2),
+            Math.cos(theta2),
+            0.0,
+            // 4行目
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+          ])
+        );
+        // 平行移動
+        let matrixMove = transpose4(
+          new Float32Array([
+            // 1行目
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            // 2行目
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            // 3行目
+            0.0,
+            0.0,
+            1.0,
+            deltaz,
+            // 4行目
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+          ])
+        );
+        let matrixTransformation = multiplyMatrix4(
+          matrixMove,
+          multiplyMatrix4(matrixRotate2, matrixRotate1)
+        );
+
+        // Build the projection matrix
+        let dn = 1.0;
+        let df = 10.0;
+        let width = 0.64;
+        let height = 0.48;
+        let matrixProjection = transpose4(
+          new Float32Array([
+            (2 * dn) / width,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            (2 * dn) / height,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            -(df + dn) / (df - dn),
+            (-2 * (df * dn)) / (df - dn),
+            0.0,
+            0.0,
+            -1.0,
+            0.0,
+          ])
+        );
+
+        // Set the shader uniform variables
+        gl.uniformMatrix4fv(
+          transformationLocation,
+          false,
+          matrixTransformation
+        );
+        gl.uniformMatrix4fv(projectionLocation, false, matrixProjection);
+
+        // Draw
+        gl.drawArrays(gl.LINE_LOOP, 0, 4);
+        gl.drawArrays(gl.LINE_LOOP, 4, 4);
+        gl.drawArrays(gl.LINE_LOOP, 8, 4);
+        gl.drawArrays(gl.LINE_LOOP, 12, 4);
+        gl.drawArrays(gl.LINE_LOOP, 16, 4);
+        gl.drawArrays(gl.LINE_LOOP, 20, 4);
+      }
+
+      window.onload = main;
+    </script>
+    <script id="vertex-shader-3d" type="x-shader/x-vertex">
+      attribute vec4 vertexPosition;
+      uniform mat4 modelTransformationMatrix;
+      uniform mat4 modelProjectionMatrix;
+
+      void main() {
+          gl_Position = modelProjectionMatrix * modelTransformationMatrix * vertexPosition;
+      }
+    </script>
+    <script id="fragment-shader-3d" type="x-shader/x-fragment">
+      void main() {
+          gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+      }
+    </script>
+  </head>
+  <body>
+    <canvas id="glCanvas" width="640" height="480"></canvas>
+  </body>
+</html>

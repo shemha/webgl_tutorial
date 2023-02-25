@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>とりあえず動かすWebGL</title>
+    <script src="https://wgld.org/j/minMatrix.js"></script>
+    <script id="vertex_shader" type="x-shader/x-vertex">
+      attribute vec3 vertexPositionFromMain;
+      attribute vec3 vectorNormalFromMain;
+      attribute vec4 vertexColorFromMain;
+      uniform mat4 mvpMatrix;
+      varying vec4 vertexColorInShader;
+      varying vec3 vectorNormalInShader;
+
+      void main(void){
+          vertexColorInShader = vertexColorFromMain;
+          vectorNormalInShader = vectorNormalFromMain;
+          gl_Position = mvpMatrix * vec4(vertexPositionFromMain, 1.0);
+      }
+    </script>
+    <script id="fragment_shader" type="x-shader/x-fragment">
+      precision mediump float;
+      varying vec4 vertexColorInShader;
+      void main(void){
+          gl_FragColor = vertexColorInShader;
+      }
+    </script>
+    <script type="text/javascript" src="FirstWebGL.js"></script>
+  </head>
+  <body>
+    <div id="view">
+      <canvas id="gl_canvas"></canvas>
+    </div>
+    <div id="controller">
+      <input
+        type="button"
+        name="startButton"
+        value="start"
+        onclick="window.drawLoop()"
+      />
+      <input
+        type="button"
+        name="stopButton"
+        value="stop"
+        onclick="window.stopDrawLoop()"
+      />
+    </div>
+  </body>
+</html>
