@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>jsGist runner frame</title>
+    <!-- jsgist-section[index.css] -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      #info {
+        position: absolute;
+        left: 0;
+        top: 0;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 0.5em;
+        font-family: monospace;
+      }
+      #info a {
+        color: orange;
+      }
+    </style>
+    <!--
+      this can not be type="module" because they are always deferred
+      and we need this to catch errors in the html if the user included
+      any code there
+    -->
+    <script src="https://jsgist.org/helper.js"></script>
+  </head>
+  <!-- jsgist-section[index.html] -->
+  <body>
+    <canvas></canvas>
+    <div id="info">
+      See
+      <a
+        target="_blank"
+        href="https://jsgist.org/?src=33ce6e6487fdf2f4ec4bffe4266d707e"
+        >here</a
+      >
+      for non-emulated gl.POINTS
+    </div>
+  </body>
+  <!-- jsgist-section[index.js] -->
+  <script type="module">
+    import * as twgl from "https://twgljs.org/dist/4.x/twgl-full.module.js";
+
+    const gl = document.querySelector("canvas").getContext("webgl2");
+
+    const pointsVS = `#version 300 es
+in vec4 position;
+uniform vec2 resolution;
+
+out vec2 vemu_PointCoord;
+
+void main() { 
+  float emu_PointSize = 64.0;
+  
+  gl_Position = position;
+
+  // emu ---- VVV ----
+
+  // compute a unit quad based on gl_VertexID
+  ivec2 unitQuad = ivec2(
+      gl_VertexID / 6 + gl_VertexID % 2,
+      (gl_VertexID / 2 + gl_VertexID / 3) % 2);
+
+  gl_Position.xy += (vec2(unitQuad) - 0.5) * 2.0 * emu_PointSize / resolution;
+
+  vemu_PointCoord = vec2(unitQuad.x, 1.0 - float(unitQuad.y));
+}
+`;
+
+    const pointsFS = `#version 300 es
+precision mediump float;
+in vec2 vemu_PointCoord;
+out vec4 fragColor;
+void main() {
+  fragColor = vec4(vemu_PointCoord, 0, 1);
+}
+`;
+
+    const prg = twgl.createProgram(gl, [pointsVS, pointsFS]);
+    gl.useProgram(prg);
+
+    const posLoc = gl.getAttribLocation(prg, "position");
+    /* ADDED */ const resLoc = gl.getUniformLocation(prg, "resolution");
+
+    const rand = (min, max) => Math.random() * (max - min) + min;
+
+    const numPoints = 100;
+    const pointPositions = new Float32Array(numPoints * 2);
+    const pointVelocities = new Float32Array(numPoints * 2);
+    for (let i = 0; i < numPoints; ++i) {
+      const offset = i * 2;
+      pointPositions[offset] = rand(-2, 2);
+      pointPositions[offset + 1] = rand(-2, 2);
+      pointVelocities[offset] = rand(-1, 1);
+      pointVelocities[offset + 1] = rand(-1, 1);
+    }
+
+    const pointsBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, pointsBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, pointPositions.byteLength, gl.DYNAMIC_DRAW);
+
+    const va = gl.createVertexArray();
+    gl.bindVertexArray(va);
+    gl.enableVertexAttribArray(posLoc);
+    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+    /* ADDED */ gl.vertexAttribDivisor(posLoc, 1);
+
+    let then = 0;
+    function render(now) {
+      now *= 0.001; // convert to seconds
+
+      const elapsedTime = Math.min(now - then, 0.5);
+      then = now;
+
+      twgl.resizeCanvasToDisplaySize(gl.canvas);
+
+      gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+      // I'd update this positions on the GPU if I can but
+      // just for the sake of an example we're doing it on the CPU
+      for (let i = 0; i < numPoints * 2; ++i) {
+        pointPositions[i] =
+          ((pointPositions[i] + pointVelocities[i] * elapsedTime + 6) % 4) - 2;
+      }
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, pointsBuffer);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, pointPositions);
+
+      gl.useProgram(prg);
+      gl.bindVertexArray(va);
+      /* ADDED */ gl.uniform2f(resLoc, gl.canvas.width, gl.canvas.height);
+
+      /* ADDED */ gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, numPoints);
+
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+  </script>
+</html>
