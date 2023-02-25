@@ -1,0 +1,109 @@
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Uniform Buffer Object (UBO)</title>
+    <script src="minMatrix.js" type="text/javascript"></script>
+    <script src="script.js" type="text/javascript"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        text-align: center;
+        font-family: consolas, Ricty, Monaco, monospace;
+      }
+      canvas {
+        margin: 20px auto;
+      }
+    </style>
+    <script id="vs_first" type="x-shader/x-vertex">
+      #version 300 es
+      layout (location = 0) in vec3 position;
+
+      layout (std140) uniform matrix {
+          mat4 mvp;
+      } mat;
+
+      uniform float scale;
+
+      void main(){
+          gl_Position = mat.mvp * vec4(position * scale, 1.0);
+      }
+    </script>
+    <script id="fs_first" type="x-shader/x-fragment">
+      #version 300 es
+      precision highp float;
+
+      layout (std140) uniform material {
+          vec4 base;
+      } color;
+
+      out vec4 outColor;
+
+      void main(){
+          outColor = color.base;
+      }
+    </script>
+    <script id="vs_second" type="x-shader/x-vertex">
+      #version 300 es
+      layout (location = 0) in vec3 position;
+
+      layout (std140) uniform matrix {
+          mat4 mvp;
+      } mat;
+
+      uniform float scale;
+
+      void main(){
+          gl_Position = mat.mvp * vec4(position * scale, 1.0);
+      }
+    </script>
+    <script id="fs_second" type="x-shader/x-fragment">
+      #version 300 es
+      precision highp float;
+
+      layout (std140) uniform material {
+          vec4 base;
+      } color;
+
+      out vec4 outColor;
+
+      void main(){
+          outColor = vec4(1.0 - color.base.rgb, color.base.a);
+      }
+    </script>
+    <script id="vsp" type="x-shader/x-vertex">
+      #version 300 es
+      layout (location = 0) in vec3 position;
+
+      out vec2 vTexCoord;
+
+      void main(){
+          vTexCoord = ((position + 1.0) * 0.5).xy;
+          gl_Position = vec4(position, 1.0);
+      }
+    </script>
+    <script id="fsp" type="x-shader/x-fragment">
+      #version 300 es
+      precision highp float;
+
+      uniform sampler2D texture2dSampler;
+
+      in vec2 vTexCoord;
+
+      out vec4 outColor;
+
+      void main(){
+          outColor = texture(texture2dSampler, vTexCoord);
+      }
+    </script>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+    <div id="info"></div>
+  </body>
+</html>
