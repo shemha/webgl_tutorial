@@ -1,0 +1,83 @@
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>動画テクスチャでクロマキー合成</title>
+    <script src="../minMatrixb.js" type="text/javascript"></script>
+    <script src="script.js" type="text/javascript"></script>
+
+    <script id="videoVS" type="x-shader/x-vertex">
+      attribute vec3 position;
+      attribute vec2 texCoord;
+      uniform   mat4 mvpMatrix;
+      varying   vec2 vTexCoord;
+
+      void main(void){
+      	vTexCoord = texCoord;
+      	gl_Position  = mvpMatrix * vec4(position, 1.0);
+      }
+    </script>
+
+    <script id="videoFS" type="x-shader/x-fragment">
+      precision mediump float;
+
+      uniform sampler2D texture;
+      uniform float difference;
+      varying vec2 vTexCoord;
+
+      const vec3 chromaKeyColor = vec3(0.0, 1.0, 0.0);
+
+      void main(void){
+      	vec4 smpColor = texture2D(texture, vTexCoord);
+      	float diff = length(chromaKeyColor - smpColor.rgb);
+      	if(diff < difference){
+      		discard;
+      	}else{
+      		gl_FragColor = smpColor;
+      	}
+      }
+    </script>
+
+    <script id="vs" type="x-shader/x-vertex">
+      attribute vec3 position;
+      attribute vec4 color;
+      attribute vec2 texCoord;
+      uniform   mat4 mvpMatrix;
+      varying   vec4 vColor;
+
+      void main(void){
+      	vColor = color;
+      	gl_Position  = mvpMatrix * vec4(position, 1.0);
+      }
+    </script>
+
+    <script id="fs" type="x-shader/x-fragment">
+      precision mediump float;
+
+      varying vec4 vColor;
+
+      void main(void){
+      	gl_FragColor = vColor;
+      }
+    </script>
+    <style>
+      canvas {
+        background-color: black;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+    <p>
+      <input id="playButton" type="button" value="video loading..." disabled />
+    </p>
+    <p>
+      <input
+        id="difference"
+        type="range"
+        value="50"
+        min="0"
+        max="100"
+      />difference (0.0 to 1.0)
+    </p>
+  </body>
+</html>
