@@ -1,0 +1,39 @@
+<html>
+  <head>
+    <title>再帰処理と移動・回転・拡大縮小</title>
+    <script src="script.js" type="text/javascript"></script>
+    <script src="../minMatrix.js" type="text/javascript"></script>
+
+    <script id="vs" type="x-shader/x-vertex">
+      // JSで作成したX, Y, Z のそれぞれの座標を格納した変数を呼び出し
+      attribute vec3 position;
+      // JSで作成した色に関する情報を格納した変数を呼び出し
+      attribute vec4 color;
+      // モデル・ビュー・プロジェクションの各変換行列を掛け合わせた座標変換行列を格納
+      uniform   mat4 mvpMatrix;
+      // フラグメントシェーダで参照できる変数
+      varying   vec4 vColor;
+
+      void main(void){
+        vColor = color;
+        // position変数は3成分しかないので、同次座標"1.0"を4番目の成分に加えてベクトル変換を行う
+        gl_Position = mvpMatrix * vec4(position, 1.0);
+      }
+    </script>
+
+    <script id="fs" type="x-shader/x-fragment">
+      precision mediump float;
+
+      // 頂点シェーダで作成した変数を呼び出し
+      varying vec4 vColor;
+
+      void main(void){
+        // 色の情報を格納
+        gl_FragColor = vColor;
+      }
+    </script>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+  </body>
+</html>

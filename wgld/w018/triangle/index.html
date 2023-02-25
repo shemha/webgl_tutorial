@@ -1,0 +1,117 @@
+<html>
+  <head>
+    <title>インデックスバッファによる描画</title>
+    <script src="script.js" type="text/javascript"></script>
+    <script src="../../minMatrix.js" type="text/javascript"></script>
+
+    <script id="vs" type="x-shader/x-vertex">
+      // JSで作成したX, Y, Z のそれぞれの座標を格納した変数を呼び出し
+      attribute vec3 position;
+      // JSで作成した色に関する情報を格納した変数を呼び出し
+      attribute vec4 color;
+      // モデル・ビュー・プロジェクションの各変換行列を掛け合わせた座標変換行列を格納
+      uniform   mat4 mvpMatrix;
+      // フラグメントシェーダで参照できる変数
+      varying   vec4 vColor;
+
+      void main(void){
+        vColor = color;
+        // position変数は3成分しかないので、同次座標"1.0"を4番目の成分に加えてベクトル変換を行う
+        gl_Position = mvpMatrix * vec4(position, 1.0);
+      }
+    </script>
+
+    <script id="fs" type="x-shader/x-fragment">
+      precision mediump float;
+
+      // 頂点シェーダで作成した変数を呼び出し
+      varying vec4 vColor;
+
+      void main(void){
+        // 色の情報を格納
+        gl_FragColor = vColor;
+      }
+    </script>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+    <script>
+      let vi = new Array();
+      let vp = new Array();
+      let vc = new Array();
+      let r = 1,
+        N = 6,
+        n = 3;
+
+      vp.push(0.0, 1.0, 0.0);
+      vc.push(1.0, 1.0, 1.0, 1.0);
+      for (let theta = 1; theta <= n; theta++) {
+        for (let phi = 0; phi < N; phi++) {
+          let x =
+            r *
+            Math.sin((theta * Math.PI) / (n + 1)) *
+            Math.sin((phi * 2 * Math.PI) / N);
+          let y = r * Math.cos((theta * Math.PI) / (n + 1));
+          let z =
+            r *
+            Math.sin((theta * Math.PI) / (n + 1)) *
+            Math.cos((phi * 2 * Math.PI) / N);
+          vp.push(x, y, z);
+          vc.push(HSVtoRGB([360 / phi, 100, 100]), 1.0);
+        }
+      }
+      vp.push(0, -1, 0);
+      vc.push(0.1, 0.1, 0.1, 1.0);
+      console.log(vp[3], vp[4], vp[5]);
+
+      for (let i = 0; i < N; i++) {
+        vi.push(0, i + 1, ((i + 1) % N) + 1);
+      }
+      for (let k = 1; k < n; k++) {
+        for (let i = 0; i < N; i++) {
+          vi.push(
+            i + 1 + N * (k - 1),
+            k * N + (i + 1),
+            ((i + 1) % N) + 1 + N * k
+          );
+          vi.push(
+            i + 1 + N * (k - 1),
+            k * N + 1 + ((i + 1) % N),
+            ((i + 1) % N) + 1 + N * (k - 1)
+          );
+        }
+      }
+      for (let i = 0; i < N; i++) {
+        vi.push(N * n + 1 - N + i, N * n + 1 - N + ((i + 1) % N), N * n + 1);
+      }
+
+      function HSVtoRGB(hsv) {
+        let h = hsv[0] / 60,
+          s = hsv[1] / 100,
+          v = hsv[2] / 100,
+          hi = Math.floor(h) % 6;
+
+        let f = h - Math.floor(h),
+          p = 255 * v * (1 - s),
+          q = 255 * v * (1 - s * f),
+          t = 255 * v * (1 - s * (1 - f));
+        v *= 255;
+
+        switch (hi) {
+          case 0:
+            return [v, t, p];
+          case 1:
+            return [q, v, p];
+          case 2:
+            return [p, v, t];
+          case 3:
+            return [p, q, v];
+          case 4:
+            return [t, p, v];
+          case 5:
+            return [v, p, q];
+        }
+      }
+    </script>
+  </body>
+</html>

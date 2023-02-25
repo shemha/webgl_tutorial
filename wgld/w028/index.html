@@ -1,0 +1,52 @@
+<html>
+  <head>
+    <title>テクスチャパラメータ</title>
+    <script src="script.js" type="text/javascript"></script>
+    <script src="../minMatrix.js" type="text/javascript"></script>
+
+    <script id="vs" type="x-shader/x-vertex">
+      // JSで作成したX, Y, Z のそれぞれの座標を格納した変数を呼び出し
+      attribute vec3 position;
+      // JSで作成した色に関する情報を格納した変数を呼び出し
+      attribute vec4 color;
+      // JSで作成したテクスチャ座標を格納した変数を呼び出し
+      attribute vec2 textureCoord;
+      // モデル・ビュー・プロジェクションの各変換行列を掛け合わせた座標変換行列を格納
+      uniform   mat4 mvpMatrix;
+      // フラグメントシェーダで参照できる変数
+      varying   vec4 vColor;
+      varying   vec2 vTextureCoord;
+
+      void main(void){
+        // 色とテクスチャの情報を無加工でフラグメントシェーダに渡す
+        vColor        = color;
+        vTextureCoord = textureCoord;
+        // position変数は3成分しかないので、同次座標"1.0"を4番目の成分に加えてベクトル変換を行う
+        gl_Position = mvpMatrix * vec4(position, 1.0);
+      }
+    </script>
+
+    <script id="fs" type="x-shader/x-fragment">
+      precision mediump float;
+
+      // sampler2D は、2次元テクスチャを示す型
+      uniform sampler2D texture0;
+      uniform sampler2D texture1;
+      // 頂点シェーダで作成した変数を呼び出し
+      varying vec4      vColor;
+      varying vec2      vTextureCoord;
+
+      void main(void){
+        // テクスチャデータからフラグメントの情報を抜き出す関数texture2D
+        // 出力したいテクスチャとテクセルを取り出したい UV 座標を引数に指定
+        vec4 smpColor0 = texture2D(texture0, vTextureCoord);
+        vec4 smpColor1 = texture2D(texture1, vTextureCoord);
+        // 色情報にテクスチャ情報を掛け合わせる
+        gl_FragColor  = vColor * smpColor0 * smpColor1;
+      }
+    </script>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+  </body>
+</html>

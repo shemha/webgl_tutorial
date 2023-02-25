@@ -1,0 +1,29 @@
+<html>
+  <head>
+    <title>ポリゴンのレンダリング</title>
+    <script src="script.js" type="text/javascript"></script>
+    <script src="../minMatrix.js" type="text/javascript"></script>
+
+    <script id="vs" type="x-shader/x-vertex">
+      //  X, Y, Z のそれぞれの座標を格納する変数
+      attribute vec3 position;
+      // モデル・ビュー・プロジェクションの各変換行列を掛け合わせた座標変換行列を格納
+      uniform   mat4 mvpMatrix;
+
+      void main(void){
+        // position変数は3成分しかないので、同次座標"1.0"を4番目の成分に加えてベクトル変換を行う
+        gl_Position = mvpMatrix * vec4(position, 1.0);
+      }
+    </script>
+
+    <script id="fs" type="x-shader/x-fragment">
+      void main(void){
+        // 白の情報を格納
+        gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+      }
+    </script>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+  </body>
+</html>

@@ -1,0 +1,62 @@
+<html>
+  <head>
+    <title>反射光によるライティング</title>
+    <script src="script.js" type="text/javascript"></script>
+    <script src="../minMatrix.js" type="text/javascript"></script>
+
+    <script id="vs" type="x-shader/x-vertex">
+      // JSで作成したX, Y, Z のそれぞれの座標を格納した変数を呼び出し
+      attribute vec3 position;
+      // JSで作成した頂点の向きを表す法線情報を格納した変数を呼び出し
+      attribute vec3 normal;
+      // JSで作成した色に関する情報を格納した変数を呼び出し
+      attribute vec4 color;
+      // モデル・ビュー・プロジェクションの各変換行列を掛け合わせた座標変換行列を格納
+      uniform   mat4 mvpMatrix;
+      // モデル座標変換行列の逆行列を受け取る変数
+      uniform   mat4 invMatrix;
+      // 平行光源から発せられる光の向きを表すベクトル変数
+      uniform   vec3 lightDirection;
+      // 視線ベクトル
+      uniform   vec3 eyeDirection;
+      // 環境光という、現実世界における自然光の乱反射をシミュレートする変数
+      uniform   vec4 ambientColor;
+      // フラグメントシェーダで参照できる変数
+      varying   vec4 vColor;
+
+      void main(void){
+        // 受け取った引数を正規化して返す
+        // lightDirection変数はvec3なので、w成分に0.0を入れてxyz成分にアクセスしてベクトルの逆変換を行う
+        vec3  invLight = normalize(invMatrix * vec4(lightDirection, 0.0)).xyz;
+        vec3  invEye   = normalize(invMatrix * vec4(eyeDirection, 0.0)).xyz;
+        vec3  halfLE   = normalize(invLight + invEye);
+        // 推奨値が最大値と最小値の間なら推奨値を、そうでなければ最大値および最小値を使う
+        // 推奨値はnormal変数とinvLight変数の内積
+        float diffuse  = clamp(dot(normal, invLight), 0.1, 1.0);
+        // 反射光という光沢を表現するハイライトをシミュレートする変数
+        float specular = pow(clamp(dot(normal, halfLE), 0.0, 1.0), 50.0);
+        // 色 = 頂点色 * 拡散光 + 反射光
+        vec4  light    = color * vec4(vec3(diffuse), 1.0) + vec4(vec3(specular), 1.0);
+        // 色 = (頂点色 * 拡散光 + 反射光) + 環境光
+        vColor         = light + ambientColor;
+        // position変数は3成分しかないので、同次座標"1.0"を4番目の成分に加えてベクトル変換を行う
+        gl_Position    = mvpMatrix * vec4(position, 1.0);
+      }
+    </script>
+
+    <script id="fs" type="x-shader/x-fragment">
+      precision mediump float;
+
+      // 頂点シェーダで作成した変数を呼び出し
+      varying vec4 vColor;
+
+      void main(void){
+        // 色の情報を格納
+        gl_FragColor = vColor;
+      }
+    </script>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+  </body>
+</html>
